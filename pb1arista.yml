@@ -1,0 +1,30 @@
+---
+- name: Run commands on all Aristas
+  hosts: all
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Backupconfig
+      eos_command:
+        authorize: yes
+        auth_pass: "TT3.0rc1"
+        username: "gag"
+        password: "GAGletmein123@"
+        commands:
+          - show running-config
+      register: show_run
+    - copy:
+        content: "{{ show_run.stdout[0] }}"
+        dest: "CFGS/Arista/{{ inventory_hostname }}.cfg"
+    - name: configure hostname
+      eos_config:
+        authorize: yes
+        auth_pass: "TT3.0rc1"
+        username: "gag"
+        password: "GAGletmein123@"
+        lines: hostname {{ inventory_hostname }}
+    - name: Template acls
+      template:
+        src : "acltemplate.j2"
+        dest : "CFGS/Arista/ACL-{{inventory_hostname}}.cfg"
