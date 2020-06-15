@@ -3,7 +3,7 @@
   hosts: all
   connection: local
   gather_facts: false
-
+  deprecation_warnings: false
   tasks:
     - name: Backupconfig
       eos_command:
