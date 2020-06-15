@@ -13,9 +13,6 @@
         commands:
           - show running-config
       register: show_run
-    - copy:
-        content: "{{ show_run.stdout[0] }}"
-        dest: "CFGS/Arista/{{ inventory_hostname }}.cfg"
     - name: configure hostname
       eos_config:
         authorize: yes
@@ -23,6 +20,4 @@
         username: "gag"
         password: "GAGletmein123@"
         lines: hostname {{ inventory_hostname }}
-    - name: Template acls
-      template:
-        src : "acltemplate.j2"
+
