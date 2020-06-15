@@ -1,3 +1,10 @@
+---
+- name: Run commands on all Aristas
+  hosts: all
+  connection: local
+  gather_facts: false
+
+  tasks:
     - name: configure hostname
       eos_config:
         authorize: yes
@@ -5,4 +12,3 @@
         username: "gag"
         password: "GAGletmein123@"
         lines: hostname {{ inventory_hostname }}
-
