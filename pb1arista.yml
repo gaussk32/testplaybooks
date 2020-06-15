@@ -4,15 +4,6 @@
 
   deprecation_warnings: false
   tasks:
-    - name: Backupconfig
-      eos_command:
-        authorize: yes
-        auth_pass: "TT3.0rc1"
-        username: "gag"
-        password: "GAGletmein123@"
-        commands:
-          - show running-config
-      register: show_run
     - name: configure hostname
       eos_config:
         authorize: yes
