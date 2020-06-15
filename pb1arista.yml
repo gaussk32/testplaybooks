@@ -1,4 +1,3 @@
-  tasks:
     - name: configure hostname
       eos_config:
         authorize: yes
