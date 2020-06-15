@@ -11,4 +11,4 @@
         auth_pass: "TT3.0rc1"
         username: "gag"
         password: "GAGletmein123@"
-        lines: hostname {{ name }}
+        lines: hostname {{ tags.name }}
