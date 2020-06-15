@@ -1,30 +1,85 @@
----
-- name: Run commands on all Aristas
-  hosts: all
-  connection: local
-  gather_facts: false
-  deprecation_warnings: false
-  tasks:
-    - name: Backupconfig
-      eos_command:
-        authorize: yes
-        auth_pass: "TT3.0rc1"
-        username: "gag"
-        password: "GAGletmein123@"
-        commands:
-          - show running-config
-      register: show_run
-    - copy:
-        content: "{{ show_run.stdout[0] }}"
-        dest: "CFGS/Arista/{{ inventory_hostname }}.cfg"
-    - name: configure hostname
-      eos_config:
-        authorize: yes
-        auth_pass: "TT3.0rc1"
-        username: "gag"
-        password: "GAGletmein123@"
-        lines: hostname {{ inventory_hostname }}
-    - name: Template acls
-      template:
-        src : "acltemplate.j2"
-        dest : "CFGS/Arista/ACL-{{inventory_hostname}}.cfg"
+#!/usr/bin/env python
+
+import json
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# Netbox URL
+URL = 'https://netbox.transtelco.net'
+
+# Netbox API Token
+TOKEN = '3d953f9466ecee9aab9870e95afc911937e2f60c'
+
+# AWX Filter Tags
+FILTER_TAGS = []
+querystring = {"manufacturer":"arista"}
+headers = {
+    'Accept': 'application/json ; indent=4',
+    'Authorization': 'Token %s' % (TOKEN),
+}
+
+api_url = URL + '/api/dcim/devices/'
+hosts_list = []
+devices = []
+ips={}
+sites = {}
+racks = {}
+platforms = {}
+tenants = {}
+tags = {}
+inventory = {}
+hostvars = {}
+models = {}
+
+# Get data from netbox
+
+while api_url:
+    api_output = requests.get(api_url, headers=headers,params=querystring,verify=False)
+    api_output_data = api_output.json()
+
+    if isinstance(api_output_data, dict) and "results" in api_output_data:
+        hosts_list += api_output_data["results"]
+        api_url = api_output_data["next"]
+
+# Filter hosts for AWX
+
+for i in hosts_list:
+    if FILTER_TAGS:
+        if any(item in FILTER_TAGS for item in i['tags']):
+            devices.append(i)
+    else:
+        devices.append(i)
+
+# Populate inventory
+
+for i in devices:
+    if i['name']:
+        if i['config_context']:
+            hostvars.setdefault('_meta', {'hostvars': {}})['hostvars'][i['primary_ip']['address'].split('/')[0]] = i['config_context']
+        if i['site']:
+            sites.setdefault('site_' + i['site']['slug'], {'hosts': []})['hosts'].append(i['primary_ip']['address'].split('/')[0])
+            hostvars.setdefault('_meta', {'hostvars': {}})['hostvars'][i['primary_ip']['address'].split('/')[0]].setdefault('tags', {})['site'] = i['site']['slug']
+        if i['name']:
+            hostvars.setdefault('_meta', {'hostvars': {}})['hostvars'][i['primary_ip']['address'].split('/')[0]].setdefault('tags', {})['inventory_hostname'] = i['name']
+#        if i['rack']:
+#            racks.setdefault('rack_' + i['rack']['name'], {'hosts': []})['hosts'].append(i['name'])
+#            hostvars.setdefault('_meta', {'hostvars': {}})['hostvars'][i['name']].setdefault('tags', {})['rack'] = i['rack']['name']
+#        if i['platform']:
+#            platforms.setdefault('platform_' + i['platform']['slug'], {'hosts': []})['hosts'].append(i['name'])
+#            hostvars.setdefault('_meta', {'hostvars': {}})['hostvars'][i['name']].setdefault('tags', {})['platform'] = i['platform']['slug']
+#        if i['tenant']:
+#            tenants.setdefault('tenant_' + i['tenant']['slug'], {'hosts': []})['hosts'].append(i['name'])
+#            hostvars.setdefault('_meta', {'hostvars': {}})['hostvars'][i['name']].setdefault('tags', {})['tenant'] = i['tenant']['slug']
+        for t in i['tags']:
+            tags.setdefault(t, {'hosts': []})['hosts'].append(i['primary_ip']['address'].split('/')[0])
+            hostvars.setdefault('_meta', {'hostvars': {}})['hostvars'][i['primary_ip']['address'].split('/')[0]].setdefault('tags', {})[t] = True
+
+inventory.update(sites)
+inventory.update(racks)
+inventory.update(platforms)
+inventory.update(tenants)
+inventory.update(tags)
+inventory.update(hostvars)
+inventory.update(ips)
+
+print(json.dumps(inventory, indent=4))
