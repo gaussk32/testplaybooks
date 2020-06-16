@@ -13,4 +13,4 @@
         password: "GAGletmein123@"
         lines: 
           - hostname {{ tags.name }}
-          - logging host {{ syslog_servers.ip }}
+          - logging host {{ syslog_servers }}
