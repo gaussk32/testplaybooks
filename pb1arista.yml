@@ -17,3 +17,4 @@
           - snmp-server host {{ snmp_servers[0].ip }} version 2c telconms1
           - snmp-server enable traps
           - snmp-server enable traps entity
+          - npt server {{ ntp_servers[0].ip }}
